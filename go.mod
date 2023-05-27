@@ -1,4 +1,4 @@
-module jobs
+module github.com/xpetit/jobs
 
 go 1.20
 

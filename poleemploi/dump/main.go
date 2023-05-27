@@ -12,9 +12,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"jobs/poleemploi"
-
 	"github.com/klauspost/compress/zstd"
+	"github.com/xpetit/jobs/poleemploi"
 	. "github.com/xpetit/x/v2"
 	"golang.org/x/term"
 	"golang.org/x/text/encoding/charmap"
