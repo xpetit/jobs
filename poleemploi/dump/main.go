@@ -1,14 +1,13 @@
 package main
 
 import (
-	"bufio"
-	"encoding/gob"
 	"encoding/json"
 	"flag"
 	"html"
 	"log"
 	"os"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -65,11 +64,9 @@ func main() {
 		)
 	}
 
-	outBuf := bufio.NewWriterSize(os.Stdout, 32*4096)
-	defer func() { C(outBuf.Flush()) }()
-	outZ := C2(zstd.NewWriter(outBuf))
-	defer Closing(outZ)
-	out := gob.NewEncoder(outZ)
+	var mu sync.Mutex
+	out := C2(zstd.NewWriter(os.Stdout))
+	defer Closing(out)
 
 	var saved atomic.Uint32
 	type job struct {
@@ -109,7 +106,10 @@ func main() {
 						data["description"] = C2(json.Marshal(s))
 					}
 
-					C(out.Encode(C2(json.Marshal(data))))
+					result = C2(json.Marshal(data))
+					mu.Lock()
+					C2(out.Write(result))
+					mu.Unlock()
 					saved.Add(1)
 				}
 				job.remaining -= poleemploi.MaxItemsPerPage
