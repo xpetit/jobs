@@ -64,9 +64,12 @@ func main() {
 		)
 	}
 
-	var mu sync.Mutex
+	var outMu sync.Mutex
 	out := C2(zstd.NewWriter(os.Stdout))
 	defer Closing(out)
+
+	var idsMu sync.Mutex
+	ids := map[string]struct{}{}
 
 	var saved atomic.Uint32
 	type job struct {
@@ -95,6 +98,18 @@ func main() {
 					var data map[string]json.RawMessage
 					C(json.Unmarshal(result, &data))
 
+					// deduplicate on ID
+					id := string(data["id"])
+					idsMu.Lock()
+					_, duplicate := ids[id]
+					if !duplicate {
+						ids[id] = struct{}{}
+					}
+					idsMu.Unlock()
+					if duplicate {
+						continue
+					}
+
 					{ // clean "description" field
 						var s string
 						C(json.Unmarshal(data["description"], &s))
@@ -107,9 +122,9 @@ func main() {
 					}
 
 					result = C2(json.Marshal(data))
-					mu.Lock()
+					outMu.Lock()
 					C2(out.Write(result))
-					mu.Unlock()
+					outMu.Unlock()
 					saved.Add(1)
 				}
 				job.remaining -= poleemploi.MaxItemsPerPage
