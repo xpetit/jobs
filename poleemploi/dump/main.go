@@ -121,7 +121,7 @@ func main() {
 						data["description"] = C2(json.Marshal(s))
 					}
 
-					result = C2(json.Marshal(data))
+					result = append(C2(json.Marshal(data)), '\n')
 					outMu.Lock()
 					C2(out.Write(result))
 					outMu.Unlock()
