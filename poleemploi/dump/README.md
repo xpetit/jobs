@@ -12,7 +12,7 @@ $ time go run github.com/xpetit/jobs/poleemploi/dump@latest \
   -id     "REDACTED" \
   -secret "REDACTED" \
   -min '2019-01-01 00:00:00' \
-  > poleemploi.zstd
+  > poleemploi.jsonl.zst
 saving 828127 job offers
 Too Many Requests
 Too Many Requests
@@ -25,6 +25,6 @@ user    2m34.112s
 sys     0m27.604s
 ```
 
-The result is a JSON Lines with a size of approximately 420MB compressed (2.5GB uncompressed).
+The result is a JSON Lines file with a size of approximately 420MB compressed (2.5GB uncompressed).
 
 Due to the limits of 150 offers/req & 4 reqs/sec, it doesn't seem possible to go faster using this API fairly.
