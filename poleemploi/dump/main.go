@@ -10,6 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unicode"
 
 	"github.com/klauspost/compress/zstd"
 	"github.com/xpetit/jobs/poleemploi"
@@ -23,10 +24,7 @@ import (
 // span of time with second resolution
 type span struct{ min, max uint32 }
 
-func formattedTimeToSeconds(s string) uint32 {
-	return uint32(C2(time.ParseInLocation(time.DateTime, s, time.Local)).Unix())
-}
-
+// split splits a span into two halves
 func (sp span) split() (span, span) {
 	mid := sp.min + (sp.max-sp.min)/2
 	return span{
@@ -36,6 +34,64 @@ func (sp span) split() (span, span) {
 			min: mid,
 			max: sp.max,
 		}
+}
+
+// formattedTimeToSeconds converts a local datetime "2019-01-01 00:00:00" to Unix time
+func formattedTimeToSeconds(s string) uint32 {
+	return uint32(C2(time.ParseInLocation(time.DateTime, s, time.Local)).Unix())
+}
+
+// cleanLine removes unecessary tokens from the non-empty line
+func cleanLine(line string) string {
+	fields := strings.Fields(line)
+	keepFields := make([]string, 0, len(fields))
+	for i, field := range fields {
+		// let's ignore fields like "F/H", "hf", "((F\H))", "*F/H*" and so on...
+		lettersAndNumbers := strings.Map(func(r rune) rune {
+			if unicode.In(r, unicode.Letter, unicode.Number) {
+				return r
+			}
+			return -1
+		}, field)
+		switch strings.ToLower(lettersAndNumbers) {
+		case "hf", "fh":
+			continue
+		}
+
+		// ignore duplicated field that don't contain spaces, numbers or letters
+		// this can happen with the following line : "abc - (F/H) - abc", where the hyphen is duplicated
+		if i > 0 && len(keepFields) > 0 && lettersAndNumbers == "" && field == keepFields[len(keepFields)-1] {
+			continue
+		}
+
+		field = strings.ReplaceAll(field, "¿", "")
+		if field != "" {
+			keepFields = append(keepFields, field)
+		}
+	}
+	return strings.Join(keepFields, " ")
+}
+
+// cleanText reformats jobs-related text, it removes consecutive empty lines and unecessary tokens
+func cleanText(text string) string {
+	prevLineIsEmpty := true
+	lines := strings.Split(strings.TrimSpace(text), "\n")
+	keepLines := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if line = strings.TrimSpace(line); line == "" {
+			if prevLineIsEmpty {
+				// we already kept an empty line, let's not add more
+				continue
+			}
+			// we keep a single empty line
+			prevLineIsEmpty = true
+			keepLines = append(keepLines, "")
+		} else { // line != ""
+			prevLineIsEmpty = false
+			keepLines = append(keepLines, cleanLine(line))
+		}
+	}
+	return strings.Join(keepLines, "\n")
 }
 
 func main() {
@@ -110,6 +166,12 @@ func main() {
 						continue
 					}
 
+					{ // clean "title" field
+						var s string
+						C(json.Unmarshal(data["intitule"], &s))
+						s = cleanText(s)
+						data["intitule"] = C2(json.Marshal(s))
+					}
 					{ // clean "description" field
 						var s string
 						C(json.Unmarshal(data["description"], &s))
@@ -118,6 +180,7 @@ func main() {
 						}
 						s, _ = C3(transform.String(t, s))
 						s = html.UnescapeString(s)
+						s = cleanText(s)
 						data["description"] = C2(json.Marshal(s))
 					}
 
