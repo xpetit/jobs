@@ -74,7 +74,7 @@ func cleanLine(line string) string {
 
 // cleanText reformats jobs-related text, it removes consecutive empty lines and unecessary tokens
 func cleanText(text string) string {
-	prevLineIsEmpty := true
+	var prevLineIsEmpty bool
 	lines := strings.Split(strings.TrimSpace(text), "\n")
 	keepLines := make([]string, 0, len(lines))
 	for _, line := range lines {
