@@ -133,7 +133,7 @@ func main() {
 		remaining int
 	}
 	jobs := make(chan job, 16)
-	wait := Goroutines(8, func() {
+	waitForWorkers := Goroutines(8, func() {
 		latin1 := charmap.ISO8859_1.NewEncoder()
 		t := transform.Chain(norm.NFKC) // https://fr.wikipedia.org/wiki/Normalisation_Unicode
 
@@ -217,7 +217,7 @@ func main() {
 		}
 	}
 	close(jobs)
-	wait()
+	waitForWorkers()
 	log.Printf("saved %d job offers at a rate of %.1f req/sec (maximum allowed: %d)\n",
 		saved.Load(),
 		float64(reqCount.Load())/time.Since(t).Seconds(),
