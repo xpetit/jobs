@@ -58,22 +58,28 @@ func cleanLine(line string) string {
 			continue
 		}
 
+		field = strings.ReplaceAll(field, "¿", "")
+		if field == "" {
+			continue
+		}
+
 		// ignore duplicated field that don't contain spaces, numbers or letters
 		// this can happen with the following line : "abc - (F/H) - abc", where the hyphen is duplicated
 		if i > 0 && len(keepFields) > 0 && lettersAndNumbers == "" && field == keepFields[len(keepFields)-1] {
 			continue
 		}
 
-		field = strings.ReplaceAll(field, "¿", "")
-		if field != "" {
-			keepFields = append(keepFields, field)
-		}
+		keepFields = append(keepFields, field)
 	}
 	return strings.Join(keepFields, " ")
 }
 
 // cleanText reformats jobs-related text, it removes consecutive empty lines and unecessary tokens
+// TODO: handle '\'
+// TODO: handle residual "h/f"
 func cleanText(text string) string {
+	text = strings.ReplaceAll(text, "/r/n", "\n")
+
 	var prevLineIsEmpty bool
 	lines := strings.Split(strings.TrimSpace(text), "\n")
 	keepLines := make([]string, 0, len(lines))
